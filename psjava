@@ -1,0 +1,42 @@
+#!/bin/bash
+
+c=$(grep -c java ps)
+echo "There is $c java proccess"
+XMSTTL=0
+XMXTTL=0
+MEM=$(cat free | sed '2!d' | awk '{print $2/1024}')
+echo "It consumes the following:"
+for ((i = 1; i <= $c; i++))
+do
+        SEED=$(echo $i!d)
+        PSJV=$(grep java ps| sed $SEED)
+        PSID=$(echo $PSJV| awk '{print $2}')
+        XMS=$(echo ${PSJV#*-Xms} |awk '{print $1}')
+        XMX=$(echo ${PSJV#*-Xmx} |awk '{print $1}')
+        XMSSZ=${XMS%?}
+        XMXSZ=${XMX%?}
+        XMSTYPE=${XMS##*[0123456789]}
+        XMSTYPE=${XMSTYPE^^}
+        XMXTYPE=${XMX##*[0123456789]}
+        XMXTYPE=${XMXTYPE^^}
+        echo "  PID $PSID has -Xms $XMSSZ $XMSTYPE & -Xmx $XMXSZ $XMXTYPE"
+        if [[ "$XMSTYPE" == M ]]
+        then
+                let XMSTTL=$XMSSZ+$XMSTTL
+        elif [[ "$XMSTYPE" == G ]]
+        then
+                let XMSTTL=$XMSSZ*1024+$XMSTTL
+        fi
+        if [[ "$XMXTYPE" == M ]] 
+        then    
+                let XMXTTL=$XMXSZ+$XMXTTL
+        elif [[ "$XMXTYPE" == G ]] 
+        then    
+                let XMXTTL=$XMXSZ*1024+$XMXTTL
+        fi      
+
+done
+echo "total: -Xms $XMSTTL M"
+echo "       -Xmx $XMXTTL M"
+echo "Mem total: $MEM M"
+echo "\"free\" mem in worst case: $(echo "$MEM-$XMXTTL" | bc -l) M"
