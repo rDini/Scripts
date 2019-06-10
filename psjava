@@ -13,13 +13,14 @@ do
         PSID=$(echo $PSJV| awk '{print $2}')
         XMS=$(echo ${PSJV#*-Xms} |awk '{print $1}')
         XMX=$(echo ${PSJV#*-Xmx} |awk '{print $1}')
+        USUARIO=$(echo $PSJV| awk '{print $1}')
         XMSSZ=${XMS%?}
         XMXSZ=${XMX%?}
         XMSTYPE=${XMS##*[0123456789]}
         XMSTYPE=${XMSTYPE^^}
         XMXTYPE=${XMX##*[0123456789]}
         XMXTYPE=${XMXTYPE^^}
-        echo "  PID $PSID has -Xms $XMSSZ $XMSTYPE & -Xmx $XMXSZ $XMXTYPE"
+        echo "  USER $USUARIO  PID $PSID has -Xms $XMSSZ $XMSTYPE & -Xmx $XMXSZ $XMXTYPE"
         if [[ "$XMSTYPE" == M ]]
         then
                 let XMSTTL=$XMSSZ+$XMSTTL
