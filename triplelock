@@ -1,0 +1,22 @@
+#!/bin/bash
+
+DEFAULT_IMGS="/home/rdini/Pictures/triplewallpaper"
+images=()
+swaylock_args=()
+declare -i count="0"
+
+imagem=$(ls /home/rdini/Pictures/triplewallpaper | sort -R | grep -v '\-0' |head -n1 |cut -d "." -f1)
+
+for output in $(swaymsg -t get_outputs | jq -r '.[] .name'); do
+        if [[ -z $1 ]] ; then
+            img_dir=$DEFAULT_IMGS
+        else
+            img_dir=$1
+        fi;
+        image=$imagem-$count-0.png
+	images+=($image)
+        swaylock_args+=(-i $output:$DEFAULT_IMGS/$image)
+	count+="1"
+done
+
+swaylock ${swaylock_args[@]} -s tile
