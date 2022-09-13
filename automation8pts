@@ -1,0 +1,236 @@
+#!/bin/bash
+
+DIR="/root/LOCALHOST"
+TMPDIR="$DIR/tmp"
+
+
+
+if [ ! -e "$DIR/tmp" ]       # Check if file exists.
+  then
+    mkdir $DIR/tmp
+    continue                # On to next.
+fi
+
+############################################################  FUNCTIONS  \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
+#
+function calc(){ 
+        awk "BEGIN{ print $* }"
+}
+
+function destrava (){
+        if
+                [[ $OPTARG -ge 1 && "$OPTARG" -le 8 ]]
+        then
+                LASTE=$(tail -n 1 $TMPDIR/pt$OPTARG |awk '{ print $1}')
+                TOTALL=$(tail -n 1 $TMPDIR/pt$OPTARG |awk '{ print $2}')
+                tail -n $(calc $TOTALL-$LASTE) $DIR/LISTA_IPS_PART$OPTARG.txt.ORIGINAL > $DIR/LISTA_IPS_PART$OPTARG.txt
+                echo -e "\033[32mExecutado:\033[0m tail -n $(calc $TOTALL-$LASTE) $DIR/LISTA_IPS_PART$OPTARG.txt.ORIGINAL > $DIR/LISTA_IPS_PART$OPTARG.txt"
+        else
+                echo "-d precisa de um argumento entre 1 e 8, referente às 8 partes"
+                exit 1
+        fi
+}
+function lista (){
+        echo -e "pt# \t line\ttotal\tlast run"
+        for i in $(ls $TMPDIR/[p2f]*); do
+                LASTE=$(tail -n 1 $i |awk '{ print $1 }')
+                TOTALL=$(tail -n 1 $i |awk '{ print $2 }')
+                RESULT=$(calc $TOTALL-$LASTE)
+                FILLET=$(echo $i | grep -o '[^/]*$')
+                if 
+                        [[ $RESULT -eq 0 ]]
+                then
+                        echo -e "$FILLET:\t\033[32mFinalizado em $(tail -n 1 $i |awk '{ print $3 }')\033[0m"
+                        echo 1 > "$TMPDIR/tst.$FILLET"
+                        if [ -e "$TMPDIR/tempo.$FILLET" ]
+                        then
+                                echo 0 > $TMPDIR/tempo.$FILLET
+                        fi
+                else
+                        Tempo=$(date -ud"1970-01-01 $(tail -n 1 $i |awk '{print $3}')" +%s)
+                        Agora=$(date -ud"1970-01-01 $(date +%T)" +%s)
+                        datediff=$(date -ud"@$(calc $Agora-$Tempo)" +%T)
+                        echo -e "$FILLET:\t$(tail -n 1 $i |awk '{print $1"\t"$2"\t"$3}END{$datediff}') \033[31m$datediff\033[0m $FILLET"
+                        echo "$(calc $Agora-$Tempo)" > $TMPDIR/tempo.$FILLET
+                fi
+        done
+        for i in $(ls $TMPDIR/tempo*); do
+                TEMPO=$(cat $i)
+                PT=$(echo $i| tail -c 2)
+                if 
+                        [[ $TEMPO -gt 1380 ]]
+                then
+                        fixecontinue "$PT"
+                fi
+        done
+
+
+}
+automacao(){
+        if 
+                [[ $(tail -n 1 $TMPDIR/pt*|grep -) ]]
+        then
+                echo ""
+        fi
+}
+fixecontinue(){
+        if
+                [[ $OPTARG -ge 1 && "$OPTARG" -le 8 ]]
+        then
+                screen -S pt$OPTARG -X quit
+                echo "Status: $(tail -n 1 $TMPDIR/pt$OPTARG)"
+                LASTE=$(tail -n 1 $TMPDIR/pt$OPTARG |awk '{ print $1}')
+                TOTALL=$(tail -n 1 $TMPDIR/pt$OPTARG |awk '{ print $2}')
+                tail -n $(calc $TOTALL-$LASTE) $DIR/LISTA_IPS_PART$OPTARG.txt.ORIGINAL > $DIR/LISTA_IPS_PART$OPTARG.txt
+                echo -e "\033[32mExecutado:\033[0m tail -n $(calc $TOTALL-$LASTE) $DIR/LISTA_IPS_PART$OPTARG.txt.ORIGINAL > $DIR/LISTA_IPS_PART$OPTARG.txt"
+                screen -dmS pt$OPTARG bash -c "bash ./verifixhost.sh -v $OPTARG"
+                echo "Iniciado"
+        else
+                if
+                        [[ $1 -ge 1 && "$1" -le 8 ]]
+                then
+                        screen -S pt$1 -X quit
+                        echo "Status: $(tail -n 1 $TMPDIR/pt$1)"
+                        LASTE=$(tail -n 1 $TMPDIR/pt$1 |awk '{ print $1}')
+                        TOTALL=$(tail -n 1 $TMPDIR/pt$1 |awk '{ print $2}')
+                        tail -n $(calc $TOTALL-$LASTE) $DIR/LISTA_IPS_PART$1.txt.ORIGINAL > $DIR/LISTA_IPS_PART$1.txt
+                        echo -e "\033[32mExecutado:\033[0m tail -n $(calc $TOTALL-$LASTE) $DIR/LISTA_IPS_PART$1.txt.ORIGINAL > $DIR/LISTA_IPS_PART$1.txt"
+                        screen -dmS pt$1 bash -c "bash ./verifixhost.sh -v $1"
+                        echo "Iniciado"
+                fi
+                echo "-D precisa de um argumento entre 1 e 8, referente às 8 partes"
+                exit 1
+        fi
+}
+
+function Verifica(){
+        if
+                [[ $OPTARG -ge 1 && "$OPTARG" -le 8 ]]
+        then
+                bash $DIR/Verify_Localhost.sh LISTA_IPS_PART$OPTARG.txt
+        else
+                echo "-d precisa de um argumento entre 1 e 8, referente às 8 partes"
+                exit 1
+        fi
+}
+function fixfile(){
+        if
+                [ -e HST_LOCHST_$OPTARG.txt ]
+        then
+                cat HST_LOCHST_$OPTARG.txt | egrep 'localhost|chave'| cut -d '=' -f1 | uniq > HST2FIX`date +%d-%m`.txt
+        else
+                echo "Necessario argumento com uma data valida. Ex: `date +%d-%m` "
+                echo "Arquivos disponiveis:"
+                ls HST_LOCHST_*.txt
+        fi
+}
+function Fix(){
+        if
+                [ -e HST_LOCHST_$OPTARG.txt ]
+        then
+                screen -dmS fix bash -c "bash Fix_Localhost.sh HST2FIX$OPTARG.txt"
+        else
+                echo "Necessario argumento com uma data valida. Ex: `date +%d-%m` "
+                echo "Arquivos disponiveis:"
+                ls HST2FIX*.txt
+        fi
+}
+function Double(){
+        if
+                [ -e HST_LOCHST_$OPTARG.txt ]
+        then
+                screen -dmS 2ck bash -c "bash Double_Check_Localhost.sh HST2FIX$OPTARG.txt"
+        else
+                echo "Necessario argumento com uma data valida. Ex: `date +%d-%m` "
+                echo "Arquivos disponiveis:"
+                ls HST2FIX*.txt
+        fi
+}
+
+function iniciando(){
+        for i in $(echo {1..8})
+        do
+                screen -dmS pt$i bash -c "bash ./verifixhost.sh -v $i"
+                echo 0 > $TMPDIR/tst.pt$i
+        done
+}
+
+Mataum(){
+        screen -S pt$OPTARG -X quit
+}
+
+Mata8(){
+        for i in $(echo {1..8}); do
+                screen -S pt$i -X quit
+        done
+}
+checkareportados(){
+#       FILET=2CHK_LOCHST_29-08.txt
+        if
+                [ -e 2CHK_LOCHST_$OPTARG.txt ]
+        then
+                for i in $(cat 2CHK_LOCHST_$OPTARG.txt |awk '{print $1}')
+                do
+                        if ! grep -q "$i" /root/Dini/reportados ;then
+                                grep $i 2CHK_LOCHST_$OPTARG.txt |sed -e 's/ ==> /\t/'
+                        fi
+                done
+        else
+                echo "Necessario argumento com uma data valida. Ex: `date +%d-%m` "
+                echo "Arquivos disponiveis:"
+                ls 2CHK_LOCHST*.txt
+        fi
+}
+
+
+function printusage(){
+        echo -e "\033[35mUSAGE:\033[0m verifixhost.sh [OPTION] [ARG]
+\n
+\t-l|-h\t List this options
+\t-R\t Recria arquivos de lista, como os originais.
+\t-d #\t Destrava a lista. \033[35mverifixhost.sh -d NUM\033[0m [1..8] 
+\t-s\t Status. Mostra quando foi  a ultima execução, qual linha de todos pt
+\t-v #\t Executa o script Verify_Localhost.sh . Necessário informar o numero do pt:
+\t\t \033[35m# bash verifixhost.sh -v NUM \033[0m [1..8]
+\t-f\t Cria arquivo para ser executado o fix. Necessario argumento Ex: `date +%d-%m`
+\t\t \033[35m# verifixhost.sh -f `date +%d-%m`\033[0m
+\t-F\t Executa o fix. Necessario argumento Ex: `date +%d-%m`
+\t\t \033[35m# bash verifixhost.sh -F `date +%d-%m`\033[0m
+\t-c\t Inicia o dia. Ira abrir pt1 ao pt8, e executar o comando de verificacao.
+\t-D #\t Destrava e continua pt#, sem ter q entrar no screen.
+\t-m #\t Mata o pt#. Usar apos termino de execucao.
+\t-2\t Executa o Doublecheck. Ex -2 `date +%d-%m`
+\t-z\t Verifica quais IPs do 2CHK_LOCHST ainda não foram reportados."
+}
+
+if
+        [ -z $1 ]
+then
+        printusage
+else
+
+        while getopts ":lhd:Rsbv:f:F:cD:m:M2:z:" opt; do
+  case $opt in
+        \?)      echo -e "Invalid option: $OPTARG\n" ; printusage ; exit 1 ;;
+        l|h)            printusage ;;
+        R)            for i in $(echo {1..8}); do cat LISTA_IPS_PART$i.txt.ORIGINAL > LISTA_IPS_PART$i.txt ; done ; wc -l LISTA_IPS_PART*.txt;;
+        d)            if (( 0 < $OPTARG < 9 )); then destrava; fi ;;
+        b)      echo -e "\033[36m%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \033[0m" ;;
+        s)      lista ;;
+        v)      Verifica ;;
+        f)      fixfile ;;
+        F)      Fix ;;
+        c)      iniciando ;;
+        D)      fixecontinue ;;
+        m)      Mataum ;;
+        M)      Mata8 ;;
+        2)      Double ;;
+        z)      checkareportados ;;
+        :)
+                echo "Option -$OPTARG requires an argument." >&2
+                exit 1 ;;
+  esac
+done
+fi
+
+exit 0
